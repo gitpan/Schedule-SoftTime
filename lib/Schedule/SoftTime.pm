@@ -7,8 +7,10 @@ Schedule::SoftTime - Scheduling functions (designed) for link checking
        $sched = new Schedule::SoftTime, sched.db;
        $sched->schedule("last", 400);
        $sched->schedule("first", 200);
-       $sched->next();
+       my ($time, $name) = $sched->first_item();
 	     "first"
+       my ($time, $name) = $sched->next_item();
+	     "last"
 
 =head1 DESCRIPTION
 
@@ -21,44 +23,33 @@ so at any free time they wish and then worry about resource
 requirements later.  If we can't handle some items when they were
 scheduled, they just queue until they can be handled.
 
-These routines were designed for the LinkController robot to use, but
-actually they are fairly general routines.  The objects being
-scheduled have to have.
-
-	  $OBJECT->time_want_test() ; says when the object would like to
-				      be tested
-	  $OBJECT->time_scheduled() ; stores and returns the time we
-				      decide to schedule the object.
-
-
-
-
-The time_scheduled should not be changed by the object (though I
-suppose it could keep one value for each link tester.. somehow?)
-
 The functions provided are
 
     first_item() - give out the next object which should be checked if
     any (first on the queue)
     next_item() - give out the item after the last we gave out
-    schedule(time, object) - schedule an object for testing
-    unschedule(object) - unschedule an object
+    schedule(time, string) - schedule an object for testing
+    unschedule(string) - unschedule an object
 
 potentially you would want
 
    schedule_priority - put an object in as soon as reasonable
-      (simulates an old person coming in and asking to skip to the front
-       of the queue)
 
-We guarantee that objects get checked eventually by never allowing an
-object to be scheduled before the time now.
+      (simulates an old person coming in and asking to skip to the
+       front of the queue)
+
+but we haven't implemented that...
+
+To guarantee that eventually each queue member gets to the front, I
+suggest that you never schedule something in the past.. 
 
 We allow prioritisation by putting identifiers in at whatever time they ask
 for.
 
 The time an object is scheduled for represents the first time it could
 be scheduled for checking.  How close to reality it is depends on how
-bad the backlog is.
+bad the backlog is.  We only allow one particular item to be scheduled
+per second.
 
 If you have sufficient resources, you should be able to clear the
 backlog no matter what and the schedule will match reality.
@@ -68,9 +59,9 @@ underresourced this will degenerate to a queue in which the back end
 is a little disorganised (but in a helpful friendly kind of way).
 
 If there is some level of lookahead into the queue (for example so
-that you can check identifiers on other sites whilst waiting for the longer
-robot exclusion period on one site), you should make sure that you
-don't make the situation of the first identifier worse.
+that you can check identifiers on other sites whilst waiting for the
+longer robot exclusion period on one site), you should make sure that
+you don't make the situation of the first identifier worse.
 
 =head1 METHODS
 
@@ -82,8 +73,9 @@ argument for it's storage.
 =cut
 
 package Schedule::SoftTime;
-$VERSION=0.011;
+$VERSION=0.024;
 
+use Carp;
 use Fcntl;
 use DB_File;
 
@@ -123,7 +115,8 @@ sub schedule {
 
   die "need to know when to schedule" unless defined $time;
   die "need an identifier to schedule" unless defined $identifier;
-  print STDERR "trying to schedule $identifier at $time\n";
+  print STDERR "trying to schedule $identifier at $time\n"
+    if $Schedule::SoftTime::verbose;
   while ( defined $self->{"sched_hash"}->{$time} ){
     $time++;
     #in otherwords there is always a second between different
@@ -132,7 +125,8 @@ sub schedule {
   }
   $hash->{$time}=$identifier;
   print STDERR $hash->{$time},
-    " scheduled at $time (" . localtime($time) . ")\n";
+    " scheduled at $time (" . localtime($time) . ")\n"
+      if $Schedule::SoftTime::verbose;
   return $time;
 }
 
@@ -164,8 +158,13 @@ sub first_item {
   my $key=0; #everything should be later than time 0
   my $value=0;
   $self->{"schedule"}->seq($key, $value, R_CURSOR);
+  if ($key==0) {
+      carp "no entries in the schedule";
+      return undef;
+  }
   $self->{"last_key"}=$key;
-  print STDERR "Schedule first key: " . $key . " value: " . $value . "\n";
+  print STDERR "Schedule first key: " . $key . " value: " . $value . "\n"
+    if $Schedule::SoftTime::verbose;
   return $key, $value;
 }
 
@@ -187,13 +186,30 @@ sub next_item {
   $stat=$self->{"schedule"}->seq( $key, $value, R_CURSOR);
   unless ($stat==0) {
     $self->{"last_key"}=$undef;
-    print STDERR "Schedule didn't return a key\n";
+    print STDERR "Schedule didn't return a key\n"
+      if $Schedule::SoftTime::verbose;
     return undef;
   }
   $self->{"last_key"}=$key;
-  print STDERR "Schedule next key: " . $key . " value: " . $value . "\n";
+  print STDERR "Schedule next key: " . $key . " value: " . $value . "\n"
+    if $Schedule::SoftTime::verbose;
   return $key, $value;
 }
+
+=head1 THE FUTURE
+
+What might be neat is an event dispatcher which interfaces with Cron.
+This would keep running when the next item in the schedule is within a
+few minutes, but would stop completely when there is a long time to
+wait and be restarted by cron.
+
+Also useful would be a way to create scheduled (sic) down time.  This
+would allow us to not allow link checking during busy times of the
+day.  A way to avoid a sudden start up at the time of the end of the
+sudden down time would also be useful.
+
+=cut
+
 
 42; #bunny rabbits.  Requires this.
 
