@@ -1,0 +1,6 @@
+.cvsignore
+MANIFEST
+MANIFEST.SKIP
+Makefile.PL
+lib/Schedule/SoftTime.pm
+make-rpm-command
