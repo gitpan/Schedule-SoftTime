@@ -2,13 +2,12 @@
 
 =head1 Basic Checks
 
-Check that schedule works in a basic way.. ..  
+Check that schedule works in a basic way.. ..
 
 =cut
 
 
 $loaded = 0;
-$loaded_gen = 0;
 
 BEGIN { print "1..11\n"} ;
 END { print "not ok 1\n" unless $loaded; } ;

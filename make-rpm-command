@@ -7,11 +7,11 @@ then
         export MAKERPMOPTS
 fi
 
-DISTFILE=Schedule-SoftTime-0.024.tar.gz
+DISTFILE=Schedule-SoftTime-0.030.tar.gz
 rm $DISTFILE
 make
 make dist
 cp $DISTFILE /usr/src/redhat/SOURCES
 /usr/src/redhat/SOURCES/makerpm.pl $MAKERPMOPTS --specs --runtests --auto-desc --source=$DISTFILE
 cd /usr/src/redhat
-rpm -ba SPECS/Schedule-SoftTime-0.024.spec
+rpm -ba SPECS/Schedule-SoftTime-0.030.spec

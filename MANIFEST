@@ -1,4 +1,5 @@
 .cvsignore
+COPYING
 MANIFEST
 MANIFEST.SKIP
 Makefile.PL

@@ -73,7 +73,16 @@ argument for it's storage.
 =cut
 
 package Schedule::SoftTime;
-$VERSION=0.024;
+$REVISION=q$Revision: 1.9 $ ;
+$VERSION='0.030';
+
+our ($silent);
+our ($no_warn);
+our ($verbose);
+
+$silent=0 unless defined $silent;
+$no_warn=0 unless defined $no_warn;
+$verbose=0 unless defined $verbose;
 
 use Carp;
 use Fcntl;
@@ -116,7 +125,7 @@ sub schedule {
   die "need to know when to schedule" unless defined $time;
   die "need an identifier to schedule" unless defined $identifier;
   print STDERR "trying to schedule $identifier at $time\n"
-    if $Schedule::SoftTime::verbose;
+    if $verbose;
   while ( defined $self->{"sched_hash"}->{$time} ){
     $time++;
     #in otherwords there is always a second between different
@@ -126,7 +135,7 @@ sub schedule {
   $hash->{$time}=$identifier;
   print STDERR $hash->{$time},
     " scheduled at $time (" . localtime($time) . ")\n"
-      if $Schedule::SoftTime::verbose;
+      if $verbose;
   return $time;
 }
 
@@ -141,8 +150,15 @@ sub unschedule {
   my $time=shift;
   my $hash=$self->{"sched_hash"};
   my $identifier=$hash->{$time};
-  print STDERR "using time $time (" . localtime($time) .
-    ") to unschedule $identifier\n";
+  if ( defined $identifier ) {
+    print STDERR "using time $time (" . localtime($time) .
+      ") to unschedule $identifier\n"
+	if $verbose;
+  } else {
+    print STDERR "no identifier scheduled at " . localtime($time) .
+      " so can't unschedule\n"
+       unless $no_warn;
+  }
   delete $hash->{$time};
   return $identifier;
 }
@@ -159,12 +175,12 @@ sub first_item {
   my $value=0;
   $self->{"schedule"}->seq($key, $value, R_CURSOR);
   if ($key==0) {
-      carp "no entries in the schedule";
+      carp "no entries in the schedule" unless $silent;
       return undef;
   }
   $self->{"last_key"}=$key;
   print STDERR "Schedule first key: " . $key . " value: " . $value . "\n"
-    if $Schedule::SoftTime::verbose;
+    if $verbose;
   return $key, $value;
 }
 
@@ -187,12 +203,12 @@ sub next_item {
   unless ($stat==0) {
     $self->{"last_key"}=$undef;
     print STDERR "Schedule didn't return a key\n"
-      if $Schedule::SoftTime::verbose;
+      if $verbose;
     return undef;
   }
   $self->{"last_key"}=$key;
   print STDERR "Schedule next key: " . $key . " value: " . $value . "\n"
-    if $Schedule::SoftTime::verbose;
+    if $verbose;
   return $key, $value;
 }
 
